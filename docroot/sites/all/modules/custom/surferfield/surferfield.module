@@ -13,13 +13,10 @@
  */
 function surferfield_field_formatter_info() {
   return array(
-    'surferfield_formatter' => array( //Machine name of the formatter
+    'surferfield_formatter' => array( // Machine name of the formatter.
       'label' => t('Wavesurfer'),
-      'field types' => array('file'), //This will only be available to text fields
-//      'settings'  => array( //Array of the settings we'll create
-//        'pic_size' => 'small', //give a default value for when the form is first loaded
-//        'tooltip' => 'Link to user Facebook page', //ditto
-//      ),
+      'field types' => array('file'), // This will only be available to text
+      // fields.
     ),
   );
 }
@@ -30,49 +27,16 @@ function surferfield_field_formatter_info() {
  * Implements hook_field_formatter_settings_form().
  */
 function surferfield_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
-  //This gets the view_mode where our settings are stored
+  // This gets the view_mode where our settings are stored.
   $display = $instance['display'][$view_mode];
-  //This gets the actual settings
+  // This gets the actual settings.
   $settings = $display['settings'];
-  //Initialize the element variable
+  // Initialize the element variable.
   $element = array();
-  //Add your select box
-//  $element['pic_size'] = array(
-//    '#type'           => 'select',                           // Use a select box widget
-//    '#title'          => t('Button Size'),                   // Widget label
-//    '#description'    => t('Select what size of FB button'), // Helper text
-//    '#default_value'  => $settings['pic_size'],              // Get the value if it's already been set
-//    '#options'        => array(
-//      'small'  => 'Small',
-//      'medium' => 'Medium',
-//      'large'  => 'Large',
-//    ),
-//  );
-//  $element['tooltip'] = array(
-//    '#type'           => 'textfield',                        // Use a textbox
-//    '#title'          => t('Tool Tip'),                      // Widget label
-//    '#description'    => t('This text will appear when a user mouses over.'),  // helper text
-//    '#default_value'  => $settings['tooltip'],               // Get the value if it's already been set
-//  );
+  // Add your select box.
+
   return $element;
 }
-
-
-
-/**
- * Implements hook_field_formatter_settings_summary().
- *//*
-function surferfield_field_formatter_settings_summary($field, $instance, $view_mode) {
-  $display = $instance['display'][$view_mode];
-  $settings = $display['settings'];
-  $summary = t('Use a @size Facebook button with the tooltip of "@tooltip"', array(
-    '@size'     => $settings['pic_size'],
-    '@tooltip'  => $settings['tooltip'],
-  )); // we use t() for translation and placeholders to guard against attacks
-  return $summary;
-}
-
-
 
 /**
  * Implements hook_field_formatter_view().
@@ -82,7 +46,6 @@ function surferfield_field_formatter_view($entity_type, $entity, $field, $instan
   $element = array();
 
   switch ($display['type']) {
-
     case 'surferfield_formatter':
       foreach ($items as $delta => $item) {
         $url = empty($item['uri']) ? '' : file_create_url($item['uri']);

@@ -1,5 +1,3 @@
-
-
 // General
 .region .block-title {
   @include adjust-font-size-to($h3-font-size);
@@ -8,7 +6,6 @@
 }
 
 .views-field {
-
   .comment-count, &.views-field-comment-count {
     @include adjust-font-size-to($font-size-small);
     float: right;
@@ -41,10 +38,9 @@
 }
 
 // Block specific
-
 #block-views-list-of-tracks-block {
   table {
-    width : 100%;
+    width: 100%;
     table-layout: fixed;
   }
 }

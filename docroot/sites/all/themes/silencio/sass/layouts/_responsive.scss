@@ -30,8 +30,6 @@ $zen-auto-include-item-base: false;
  * For screen sizes larger than 1200px, prevent excessively long lines of text
  * by setting a max-width.
  */
-//#page,
-//.region-bottom {
   .header-inner,
   .main-inner,
   .footer-inner,
@@ -67,7 +65,6 @@ $zen-auto-include-item-base: false;
 
 /* Navigation bar */
 @include respond-to(narrow) {
-//@media all and (min-width: 480px) {
   #main {
     /* Move all the children of #main down to make room. */
     padding-top: $nav-height;
@@ -106,10 +103,7 @@ $zen-auto-include-item-base: false;
  * Use 3 grid columns for smaller screens.
  */
 @include respond-to(narrow-only) {
-//@media all and (min-width: 480px) and (max-width: 959px) {
-
   $zen-column-count: 3;
-
 
   /**
    * The layout when there is only one sidebar, the left one.
@@ -186,8 +180,6 @@ $zen-auto-include-item-base: false;
  * Use 5 grid columns for larger screens.
  */
 @include respond-to(normal) {
-//@media all and (min-width: 960px) {
-
   $zen-column-count: 5;
 
   /**
