@@ -1,0 +1,18 @@
+<?php
+
+function mp3_info_node_presave($node) {
+  if ($node->type == 'track') {
+
+    $entity = entity_load('file', array($node->field_track[LANGUAGE_NONE][0]['fid']));
+
+    $file = getid3_analyze(drupal_realpath($entity[key($entity)]->uri));
+
+    $node->field_playtime[LANGUAGE_NONE][0]['value'] = $file['playtime_string'];
+
+    $node->field_bitrate[LANGUAGE_NONE][0]['value'] = $file['bitrate'];
+
+    $node->field_track_number[LANGUAGE_NONE][0]['value'] = $file['tags']['id3v2']['track_number'];
+
+    $node->title = $file['filename'];
+  }
+}

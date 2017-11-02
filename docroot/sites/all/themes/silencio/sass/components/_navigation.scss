@@ -1,0 +1,38 @@
+/**
+ * Navigation bar.
+ */
+#navigation {
+  /* Sometimes you want to prevent overlapping with main div. */
+  /* overflow: hidden; */
+
+  .block {
+    margin-bottom: 0;
+  }
+
+  .block-menu .block__title,
+  .block-menu-block .block__title {
+    @extend %element-invisible;
+  }
+
+  /* Main menu and secondary menu links and menu block links. */
+  .links,
+  .menu {
+    @include horizontal-list($indent-amount/2);
+    @include adjust-font-size-to($nav-font-size);
+    @include leader(0.25);
+    @include trailer(0.25);
+
+    li {
+      a {
+        @include fake-element();
+        &:before {
+          border-left: 1px solid $base-red;
+          margin-left: $indent-amount/-2;
+        }
+      }
+      &.first a:before {
+        content: none;
+      }
+    }
+  }
+}

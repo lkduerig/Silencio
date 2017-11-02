@@ -1,0 +1,50 @@
+
+
+// General
+.region .block-title {
+  @include adjust-font-size-to($h3-font-size);
+  color: $base-red;
+  border-bottom: 1px solid;
+}
+
+.views-field {
+
+  .comment-count, &.views-field-comment-count {
+    @include adjust-font-size-to($font-size-small);
+    float: right;
+    width: $indent-amount;
+    text-align: center;
+    background-color: $gray;
+    color: $white;
+    @include fake-element();
+    &:before {
+      width: 0;
+      height: 0;
+      border-right: 7px solid transparent;
+      border-top: 7px solid $gray;
+      left: 50%;
+      margin-left: -3px;
+      top: 99%;
+    }
+  }
+
+  .active {
+    border-left: 2px solid $base-red;
+    color: $base-red;
+    .comment-count, &.views-field-comment-count {
+      background-color: $base-red;
+      &:before {
+        border-top-color: $base-red;
+      }
+    }
+  }
+}
+
+// Block specific
+
+#block-views-list-of-tracks-block {
+  table {
+    width : 100%;
+    table-layout: fixed;
+  }
+}

@@ -1,0 +1,201 @@
+<?php
+
+/**
+ * @file
+ * Install file providing corresponding entity reference schema.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function cer_schema() {
+  $schema = array();
+
+  $schema['cer'] = array(
+    'description' => t('Saves the content types and entity reference fields for which the corresponding entity reference is enabled'),
+    'fields' => array(
+      'id' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'initial' => '',
+        'no export' => TRUE,
+      ),
+      'a' => array(
+        'type' => 'text',
+        'size' => 'tiny',
+        'export callback' => '_cer_export_chain',
+      ),
+      'b' => array(
+        'type' => 'text',
+        'size' => 'tiny',
+        'export callback' => '_cer_export_chain',
+      ),
+      'bidirectional' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 1,
+        'unsigned' => TRUE,
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'default' => 0,
+        'not null' => TRUE,
+      ),
+      'enabled' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 1,
+        'unsigned' => TRUE,
+        'no export' => TRUE,
+      ),
+    ),
+    'export' => array(
+      'key' => 'id',
+      'key name' => 'Preset ID',
+      'object' => 'CerPreset',
+      'default hook' => 'cer_default_presets',
+      'identifier' => 'preset',
+      'bulk export' => TRUE,
+      'list callback' => 'cer_preset_list_all',
+      'load all callback' => 'cer_preset_load_all',
+      'status callback' => 'cer_preset_set_status',
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function cer_install() {
+  if (module_exists('corresponding_node_references')) {
+    _cer_hijack_cnr();
+  }
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function cer_uninstall() {
+  variable_del('default_cer');  // Delete CTools' preset status variable.
+  variable_del('cer_debug');
+}
+
+function _cer_hijack_cnr() {
+  ctools_include('export');
+
+  $cnr = db_query('SELECT node_types_content_fields FROM {corresponding_node_references} WHERE enabled = 1')->fetchCol();
+  foreach ($cnr as $index => $key) {
+    // Prepend 'node*' to each side of the preset. CNR, sensibly enough, assumes everything
+    // is on a node, but CER needs this specified explicitly.
+    $key = explode('*', $key);
+    $cnr[$index] = 'node*' . $key[0] . '*' . $key[1] . '*node*' . $key[2] . '*' . $key[3];
+  }
+  array_walk($cnr, '_cer_rebuild_preset');
+
+  drupal_set_message(t('Rebuilt CNR presets.'));
+  
+  // So long, CNR...
+  module_disable( array('corresponding_node_references') );
+}
+
+/**
+ * Rename table to shorten module name.
+ */
+function cer_update_7001() {
+  if (db_table_exists('corresponding_entity_references')) {
+    db_rename_table('corresponding_entity_references', 'cer');
+  }
+}
+
+/**
+ * Rebuilds the CER table and all active presets.
+ */
+function cer_update_7002() {
+  registry_rebuild();
+
+  $tables = cer_schema();
+  $table = $tables['cer'];
+
+  // Drop the old primary key, 'entity_types_content_fields'. After the presets are
+  // rewritten, 'id' will be the new primary key.
+  db_drop_primary_key('cer');
+
+  // Create the new fields
+  foreach ($table['fields'] as $id => $spec) {
+    if (! db_field_exists('cer', $id)) {
+      db_add_field('cer', $id, $spec);
+    }
+  }
+
+  $result = db_select('cer')->fields('cer')->execute();
+
+  foreach ($result as $row) {
+    _cer_rebuild_preset($row->entity_types_content_fields, $row->enabled);
+  }
+
+  // The old presets will have an empty 'id' field, so delete them all before
+  // creating the primary key.
+  db_delete('cer')->condition('id', '')->execute();
+  
+  db_add_primary_key('cer', $table['primary key']);
+
+  db_drop_field('cer', 'entity_types_content_fields');
+
+  if (module_exists('corresponding_node_references')) {
+    _cer_hijack_cnr();
+  }
+}
+
+/**
+ * Drops the defunct a_chain and b_chain fields. (Issue #2227343)
+ */
+function cer_update_7003() {
+  if (db_field_exists('cer', 'a_chain')) {
+    db_drop_field('cer', 'a_chain');
+  }
+  if (db_field_exists('cer', 'b_chain')) {
+    db_drop_field('cer', 'b_chain');
+  }
+}
+
+/**
+ * Creates {cer}.weight.
+ */
+function cer_update_7004() {
+  $tables = cer_schema();
+
+  if (! db_field_exists('cer', 'weight')) {
+    db_add_field('cer', 'weight', $tables['cer']['fields']['weight']);
+  }
+}
+
+function _cer_rebuild_preset($key, $enable = TRUE) {
+  ctools_include('export');
+
+  $keys = explode('*', $key);
+
+  // If the preset we're rebuilding refers to any fields which no longer exist,
+  // CerField::getPlugin() (which is called by CerFieldChain::unpack()) will
+  // throw an exception. If that happens, catch it with an error message and bail out.
+  // If this function was called by cer_update_7002(), the bad preset will be
+  // deleted anyway because it will be one of the old ones without an ID.
+  try {
+    $preset = ctools_export_crud_new('cer');
+
+    $preset->left = CerFieldChain::unpack(implode(':', array_slice($keys, 0, 3)));
+    $preset->right = CerFieldChain::unpack(implode(':', array_slice($keys, 3)));
+
+    ctools_export_crud_save('cer', $preset);
+
+    if ($enable) {
+      ctools_export_crud_set_status('cer', $preset, TRUE);
+    }
+  }
+  catch (Exception $e) {
+    drupal_set_message(t('Could not rebuild preset %key because one or more of its fields do not exist.', array('%key' => $key)), 'error');
+  }
+}

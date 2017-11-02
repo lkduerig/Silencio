@@ -1,0 +1,15 @@
+name = Library Browser
+description = Lists to help browse a library of CDs and tracks
+core = 7.x
+package = Silencio
+version = 7.x-1.0
+project = library_browser
+dependencies[] = track
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features[views_view][] = list_of_cds
+features[views_view][] = list_of_tracks
+features[views_view][] = listofprojects
+features_exclude[dependencies][ctools] = ctools
+project path = sites/all/modules/features

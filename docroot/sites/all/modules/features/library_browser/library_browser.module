@@ -1,0 +1,8 @@
+<?php
+/**
+ * @file
+ * Code for the Library Browser feature.
+ */
+
+include_once 'library_browser.features.inc';
+

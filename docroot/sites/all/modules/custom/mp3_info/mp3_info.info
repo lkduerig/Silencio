@@ -1,0 +1,6 @@
+name = MP3 info
+description = "Get metadata out of the MP3s"
+package = Fields
+core = 7.x
+
+dependencies[] = getid3

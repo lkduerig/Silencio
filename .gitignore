@@ -1,0 +1,9 @@
+# Ignore paths that contain user-generated content.
+docroot/sites/*/private
+docroot/sites/default/files/*
+docroot/sites/default/local.settings.php
+.DS_*
+.sass-cache
+.idea
+/docroot/*.sublime-project
+/docroot/*.sublime-workspace

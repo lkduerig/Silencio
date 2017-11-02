@@ -1,0 +1,244 @@
+This is the array of the data recieved by getid3_analyze(), for reference
+
+Array
+(
+    [GETID3_VERSION] => 1.8.2-20101206
+    [filesize] => 6970173
+    [avdataoffset] => 602
+    [avdataend] => 6970173
+    [fileformat] => mp3
+    [audio] => Array
+        (
+            [dataformat] => mp3
+            [channels] => 1
+            [sample_rate] => 44100
+            [bitrate] => 96000
+            [channelmode] => mono
+            [bitrate_mode] => cbr
+            [lossless] =>
+            [encoder_options] => CBR96
+            [compression_ratio] => 0.136054421769
+            [streams] => Array
+                (
+                    [0] => Array
+                        (
+                            [dataformat] => mp3
+                            [channels] => 1
+                            [sample_rate] => 44100
+                            [bitrate] => 96000
+                            [channelmode] => mono
+                            [bitrate_mode] => cbr
+                            [lossless] =>
+                            [encoder_options] => CBR96
+                            [compression_ratio] => 0.136054421769
+                        )
+
+                )
+
+        )
+
+    [tags] => Array
+        (
+            [id3v2] => Array
+                (
+                    [track_number] => Array
+                        (
+                            [0] => 1
+                        )
+
+                    [length] => Array
+                        (
+                            [0] => 581608
+                        )
+
+                )
+
+        )
+
+    [encoding] => UTF-8
+    [filename] => CD01_WSOY_Soini_Peruspomo_01_1.mp3
+    [filepath] => /Users/Liisa/Sites/silencio/silencio.dev/docroot/sites/default/files/media
+    [filenamepath] => /Users/Liisa/Sites/silencio/silencio.dev/docroot/sites/default/files/media/CD01_WSOY_Soini_Peruspomo_01_1.mp3
+    [id3v2] => Array
+        (
+            [header] => 1
+            [flags] => Array
+                (
+                    [unsynch] =>
+                    [exthead] =>
+                    [experim] =>
+                )
+
+            [majorversion] => 3
+            [minorversion] => 0
+            [headerlength] => 602
+            [tag_offset_start] => 0
+            [tag_offset_end] => 602
+            [encoding] => UTF-8
+            [TIT2] => Array
+                (
+                    [0] => Array
+                        (
+                            [frame_name] => TIT2
+                            [frame_flags_raw] => 0
+                            [data] =>
+                            [datalength] => 1
+                            [dataoffset] => 10
+                            [framenamelong] => Title/songname/content description
+                            [framenameshort] => title
+                            [flags] => Array
+                                (
+                                    [TagAlterPreservation] =>
+                                    [FileAlterPreservation] =>
+                                    [ReadOnly] =>
+                                    [compression] =>
+                                    [Encryption] =>
+                                    [GroupingIdentity] =>
+                                )
+
+                            [encodingid] => 0
+                            [encoding] => ISO-8859-1
+                        )
+
+                )
+
+            [comments] => Array
+                (
+                    [track_number] => Array
+                        (
+                            [0] => 1
+                        )
+
+                    [length] => Array
+                        (
+                            [0] => 581608
+                        )
+
+                )
+
+            [TRCK] => Array
+                (
+                    [0] => Array
+                        (
+                            [frame_name] => TRCK
+                            [frame_flags_raw] => 0
+                            [data] => 1
+                            [datalength] => 2
+                            [dataoffset] => 21
+                            [framenamelong] => Track number/Position in set
+                            [framenameshort] => track_number
+                            [flags] => Array
+                                (
+                                    [TagAlterPreservation] =>
+                                    [FileAlterPreservation] =>
+                                    [ReadOnly] =>
+                                    [compression] =>
+                                    [Encryption] =>
+                                    [GroupingIdentity] =>
+                                )
+
+                            [encodingid] => 0
+                            [encoding] => ISO-8859-1
+                        )
+
+                )
+
+            [TLEN] => Array
+                (
+                    [0] => Array
+                        (
+                            [frame_name] => TLEN
+                            [frame_flags_raw] => 0
+                            [data] => 581608
+                            [datalength] => 7
+                            [dataoffset] => 33
+                            [framenamelong] => Length
+                            [framenameshort] => length
+                            [flags] => Array
+                                (
+                                    [TagAlterPreservation] =>
+                                    [FileAlterPreservation] =>
+                                    [ReadOnly] =>
+                                    [compression] =>
+                                    [Encryption] =>
+                                    [GroupingIdentity] =>
+                                )
+
+                            [encodingid] => 0
+                            [encoding] => ISO-8859-1
+                        )
+
+                )
+
+            [padding] => Array
+                (
+                    [start] => 50
+                    [length] => 552
+                    [valid] => 1
+                )
+
+        )
+
+    [mime_type] => audio/mpeg
+    [mpeg] => Array
+        (
+            [audio] => Array
+                (
+                    [raw] => Array
+                        (
+                            [synch] => 4094
+                            [version] => 3
+                            [layer] => 1
+                            [protection] => 1
+                            [bitrate] => 7
+                            [sample_rate] => 0
+                            [padding] => 0
+                            [private] => 0
+                            [channelmode] => 3
+                            [modeextension] => 0
+                            [copyright] => 0
+                            [original] => 0
+                            [emphasis] => 0
+                        )
+
+                    [version] => 1
+                    [layer] => 3
+                    [channelmode] => mono
+                    [channels] => 1
+                    [sample_rate] => 44100
+                    [protection] =>
+                    [private] =>
+                    [modeextension] =>
+                    [copyright] =>
+                    [original] =>
+                    [emphasis] => none
+                    [padding] =>
+                    [bitrate] => 96000
+                    [framelength] => 313
+                    [bitrate_mode] => cbr
+                )
+
+        )
+
+    [playtime_seconds] => 580.797583333
+    [tags_html] => Array
+        (
+            [id3v2] => Array
+                (
+                    [track_number] => Array
+                        (
+                            [0] => 1
+                        )
+
+                    [length] => Array
+                        (
+                            [0] => 581608
+                        )
+
+                )
+
+        )
+
+    [bitrate] => 96000
+    [playtime_string] => 9:41
+)

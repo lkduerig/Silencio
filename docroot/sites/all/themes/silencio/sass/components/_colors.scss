@@ -1,0 +1,24 @@
+#header, #navigation {
+//  background-color: $lightest-gray;
+  color: $base-red;
+  a {
+    color: $base-red;
+  }
+}
+#navigation {
+//  border-top: 1px solid $light-gray;
+//  border-top: 1px solid $base-red;
+//  @include box-shadow($box-shadow);
+}
+#main {
+//  background-color: $dark-gray;
+  .main-inner {
+//    color: $white;
+    a {
+//      color: $white;
+    }
+  }
+}
+#footer {
+  background-color: $base-red;
+}

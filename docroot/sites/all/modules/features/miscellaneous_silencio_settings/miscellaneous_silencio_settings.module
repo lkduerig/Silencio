@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Miscellaneous Silencio settings feature.
+ */
+
+include_once 'miscellaneous_silencio_settings.features.inc';

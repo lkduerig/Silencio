@@ -1,0 +1,15 @@
+$icons-spacing: 10px;
+//$icons-position: 100%;
+//$icons: sprite-map("icons/*.png");
+//$icons-sprite-base-class: "%glyphicon";
+@import "icons/*.png";
+
+.glyphicon-skip-backward  { @include icons-sprite(control-beginning, TRUE); }
+.glyphicon-step-backward  { @include icons-sprite(control-backward, TRUE); }
+.glyphicon-play           { @include icons-sprite(control-play, TRUE); }
+.glyphicon-pause          { @include icons-sprite(control-play-light, TRUE); }
+.glyphicon-step-forward   { @include icons-sprite(control-forward, TRUE); }
+.glyphicon-skip-forward   { @include icons-sprite(control-end, TRUE); }
+.glyphicon-volume-off     { @include icons-sprite(control-mute, TRUE); }
+.glyphicon-flag-1         { @include icons-sprite(control-comment, TRUE); }
+.glyphicon-flag-2         { @include icons-sprite(control-comment-light, TRUE); }

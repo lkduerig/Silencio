@@ -1,0 +1,5 @@
+name = Surferfield
+description = "Allows uploaded mp3 file to be displayed using wavesurfer.js"
+package = Fields
+core = 7.x
+files[] = surferfield.module

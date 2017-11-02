@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function cer_entity_settings_schema() {
+  return array(
+    'cer_entity_settings' => array(
+      'fields' => array(
+        'pid' => array(
+          'type' => 'varchar',
+          'length' => 32,
+          'not null' => TRUE,
+        ),
+        'entity_type' => array(
+          'type' => 'varchar',
+          'length' => 128,
+          'not null' => TRUE,
+        ),
+        'entity_id' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'fiid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'status' => array(
+          'type' => 'int',
+          'size' => 'tiny',
+          'default' => 1,
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'foreign keys' => array(
+        'cer' => array(
+          'table' => 'cer',
+          'columns' => array('pid' => 'id'),
+        ),
+        'field_instance' => array(
+          'table' => 'field_config_instance',
+          'columns' => array('fiid' => 'id'),
+        ),
+      ),
+      'primary key' => array('pid', 'entity_type', 'entity_id'),
+    ),
+  );
+}

@@ -1,0 +1,587 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function cer_menu() {
+  $items = array();
+  $prefix = 'admin/config/content/cer';
+
+  $items[$prefix] = array(
+    'title' => 'Corresponding References',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_preset_list'),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items["{$prefix}/presets"] = array(
+    'title' => 'Presets',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
+  );
+  $items["{$prefix}/presets/add"] = array(
+    'title' => 'Add a preset',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_add_preset'),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items["{$prefix}/presets/import"] = array(
+    'title' => 'Import a preset',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_import_preset'),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+  );
+  $items["{$prefix}/presets/toggle/%cer_preset"] = array(
+    'page callback' => 'cer_preset_toggle',
+    'page arguments' => array(6),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items["{$prefix}/presets/invert/%cer_preset"] = array(
+    'page callback' => 'cer_preset_invert',
+    'page arguments' => array(6),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items["{$prefix}/presets/revert-delete/%cer_preset"] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_revert_delete_preset', 6),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items["{$prefix}/presets/export/%cer_preset"] = array(
+    'title' => 'Export Preset',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_export_preset', 6),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items["{$prefix}/update"] = array(
+    'title' => 'Bulk Update',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cer_bulk_update_form'),
+    'access arguments' => array('administer cer settings'),
+    'file' => 'cer.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+
+  return $items;
+}
+
+/**
+ * Load callback for %cer_preset wildcards.
+ */
+function cer_preset_load($id) {
+  ctools_include('export');
+  return ctools_export_crud_load('cer', $id);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function cer_theme() {
+  return array(
+    'cer_field_label' => array(
+      'variables' => array(
+        'field' => NULL,
+      ),
+    ),
+  );
+}
+
+/**
+ * Renders a human-readable label for a CER field.
+ * e.g. Node >> Page >> Related Content.
+ */
+function theme_cer_field_label(array $variables) {
+  $label = '';
+  $field = $variables['field'];
+
+  if ($field->entityType != 'field_collection_item') {
+    $info = entity_get_info($field->entityType);
+
+    $label .= $info['label'];
+
+    if (isset($info['entity keys']['bundle'])) {
+      $label .= ' &raquo; ';
+      $label .= $info['bundles'][$field->bundle]['label'];
+      $label .= ' &raquo; ';
+    }
+  }
+
+  return $label . $field->label;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function cer_permission() {
+  return array(
+    'administer cer settings' => array(
+      'title' => t('Administer corresponding references'),
+    )
+  );
+}
+
+/**
+ * Implements hook_field_delete_instance().
+ */
+function cer_field_delete_instance(array $instance) {
+  $pattern = sprintf('%%%s:%s:%s%%', $instance['entity_type'], $instance['bundle'], $instance['field_name']);
+  db_query("DELETE FROM {cer} WHERE a LIKE :pattern OR b LIKE :pattern", array(':pattern' => $pattern));
+}
+
+/**
+ * Implements hook_field_delete_field().
+ */
+function cer_field_delete_field(array $field) {
+  $pattern = '%' . $field['field_name'] . '%';
+  db_query("DELETE FROM {cer} WHERE a LIKE :pattern OR b LIKE :pattern", array(':pattern' => $pattern));
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function cer_node_insert(StdClass $node) {
+  // Write access grants *before* doing CER stuff in order to prevent a race condition.
+  // This tricky bug can easily rear its ugly head if you have an Entity Reference field,
+  // referencing nodes, and a node access module enabled.
+  //
+  // Entity Reference's bundled selection handlers will use either EntityFieldQuery or 
+  // Views, both of which are affected by node access grants (and rightfully so). 
+  // However, when creating a node, core invokes hook_node_save() *before* it writes the 
+  // grants to the database, which can cause EntityFieldQuery (or Views, unless 
+  // configured to disable SQL rewriting) to return no results if the user isn't the 
+  // superuser. Since CER asks the field backend to validate the reference, this can
+  // cause the reference to not be validated, and the cross-reference to fail.
+  //
+  // Really, this is a core issue and not a CER issue. Core should be invoking
+  // hook_node_save() AFTER it writes access info. But we can work around it by writing
+  // the access info, doing our own processing, and then clearing the access info
+  // so node_save() can write it cleanly. And that's what this does.
+  //
+  // Hear that, core devs? Fix it fix it fix it!
+  //
+  node_access_acquire_grants($node);
+  cer_processing_entity('insert', $node, 'node');
+  db_delete('node_access')->condition('nid', $node->nid)->execute();
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function cer_entity_insert($entity, $type) {
+  if (! function_exists("cer_{$type}_insert")) {
+    cer_processing_entity('insert', $entity, $type);
+  }
+}
+
+/**
+ * Implements hook_entity_update().
+ */
+function cer_entity_update($entity, $type) {
+  if (! function_exists("cer_{$type}_update")) {
+    cer_processing_entity('update', $entity, $type);
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function cer_entity_delete($entity, $type) {
+  if (! function_exists("cer_{$type}_delete")) {
+    cer_processing_entity('delete', $entity, $type);
+  }
+}
+
+/**
+ * Process a entity's corresponding entity references.
+ *
+ * @param string $op 
+ *  The operation being performed on the entity (insert, update, or delete).
+ *
+ * @param object $entity
+ *  The entity object, optionally wrapped by EntityDrupalWrapper, or its ID.
+ *
+ * @param string $entity_type
+ *  The entity type.
+ *
+ * @param array $context
+ *  Either the Batch API context (since this is the callback function used
+ *  during bulk update) or NULL if we're not in a batch job.
+ */
+function cer_processing_entity($op, $entity, $entity_type, array &$context = NULL) {
+  // Don't do anything if the MAINTENANCE_MODE flag is set. This isn't the same thing
+  // as user-facing maintenance mode, but rather is set when running, say, update.php
+  // or another relatively low-level operation. This was added to prevent CER from
+  // running while updating from 1.x or 2.x, since classes may not yet be registered
+  // yet and we don't want to cause fatal errors during update.
+  if (defined('MAINTENANCE_MODE')) {
+    static $message_set;
+
+    // Only show the message once.
+    if (! $message_set) {
+      drupal_set_message(t('Refusing to initialize CER when global MAINTENANCE_MODE flag is set.'), 'warning');
+      $message_set = TRUE;
+    }
+    return;
+  }
+
+  if (is_object($entity)) {
+    if (! ($entity instanceof EntityDrupalWrapper)) {
+      $entity = new EntityDrupalWrapper($entity_type, $entity);
+    }
+
+    $presets = _cer_filter_presets($entity->cer->lineage->value());
+
+    // Before we do the actual processing, allow modules to react and alter
+    // the preset list.
+    $hook = "cer_entity_{$op}";
+    foreach (module_implements($hook) as $module) {
+      $function = "{$module}_{$hook}";
+      
+      if (! function_exists($function)) {
+        $include = drupal_get_path('module', $module) . "/{$module}.cer.inc";
+        if (file_exists($include)) {
+          include $include;
+        }
+      }
+
+      if (function_exists($function)) {
+        $function($presets, $entity);
+      }
+    }
+
+    foreach ($presets as $preset) {
+      $handler = new CerPresetHandler($preset, $entity);
+      $handler->$op();
+    }
+
+    if ($context) {
+      if (! isset($context['results']['count'])) {
+        $context['results']['count'] = 0;
+      }
+      $context['results']['count']++;
+    }
+  }
+  elseif (is_numeric($entity)) {
+    $entities = entity_load($entity_type, array($entity));
+    cer_processing_entity($op, reset($entities), $entity_type, $context);
+  }
+  else {
+    drupal_set_message(t('CER Error: Could not process @entity_type @entity.', array('@entity_type' => $entity_type, '@entity' => $entity)), 'error');
+  }
+}
+
+/**
+ * Returns a subset of all enabled presets that match the given $filter string. To
+ * be matched, a preset's left chain must match the filter. OR, the preset must
+ * be bidirectional and its right chain must match the filter.
+ *
+ * @return
+ * Array of presets, keyed by their computed IDs. If no presets matched the filter,
+ * an empty array is returned.
+ */
+function _cer_filter_presets($filter) {
+  $presets = array();
+
+  ctools_include('export');
+  $all = ctools_export_crud_load_all('cer');
+
+  foreach ($all as $preset) {
+    // If the preset is disabled, don't use it at all.
+    if ($preset->enabled()) {
+      // If the preset is bidrectional AND the right chain matches the filter, create
+      // an inverted copy of the preset and add it to the list.
+      if ($preset->bidirectional && strPos($preset->right->__toString(), $filter) === 0) {
+        $inverse = $preset->invert();
+        $presets[$inverse->id] = $inverse;
+      }
+
+      // Add the original preset to the list only if the left chain matches the filter.
+      if (strPos($preset->left->__toString(), $filter) === 0) {
+        $presets[$preset->id] = $preset;
+      }
+    }
+  }
+  
+  return $presets;
+}
+
+/**
+ * Batch 'finished' callback.
+ */
+function cer_batch_update_existing_finished($success, $results, $operations) {
+  if ($success) {
+    $message = format_plural($results['count'], '1 entity processed.', '@count entities processed.');
+
+    if (isset($results['errors'])) {
+      $type = 'warning';
+      foreach ($results['errors'] as $e) {
+        drupal_set_message($e->getMessage(), 'error');
+      }
+    }
+    else {
+      $type = 'status';
+    }
+    drupal_set_message($message, $type);
+  }
+  else {
+    // An error occurred. $operations contains the operations that remained unprocessed.
+    $error_operation = reset($operations);
+    $message = 'An error occurred while processing ' . $error_operation[0] . ' with arguments:' . print_r($error_operation[0], TRUE);
+    drupal_set_message($message, 'error');
+  }
+}
+
+/**
+ * Implements hook_hook_info().
+ *
+ * @see cer.api.php for info about what these hooks do.
+ */
+function cer_hook_info() {
+  return array(
+    'cer_fields' => array(
+      'group' => 'cer',
+    ),
+    'cer_fields_alter' => array(
+      'group' => 'cer',
+    ),
+    'cer_default_presets' => array(
+      'group' => 'cer',
+    ),
+    'cer_default_presets_alter' => array(
+      'group' => 'cer',
+    ),
+    'cer_preset_create' => array(
+      'group' => 'cer',
+    ),
+    'cer_preset_toggle' => array(
+      'group' => 'cer',
+    ),
+    'cer_preset_delete' => array(
+      'group' => 'cer',
+    ),
+    'cer_entity_insert' => array(
+      'group' => 'cer',
+    ),
+    'cer_entity_update' => array(
+      'group' => 'cer',
+    ),
+  );
+}
+
+/**
+ * Implements hook_features_api().
+ */
+function cer_features_api() {
+  module_load_include('inc', 'features', 'includes/features.ctools');
+
+  // Defer to the Features' integration with CTools exportables.
+  $API = ctools_component_features_api('cer');
+  $API['cer']['default_filename'] = 'cer';  // Put presets in MODULE.cer.inc.
+
+  return $API;
+}
+
+/**
+ * Implements component hook_features_export().
+ */
+function cer_features_export($data, &$export, $module) {
+  $pipe = array();
+
+  $export['dependencies']['cer'] = 'cer';
+
+  ctools_include('export');
+  $presets = ctools_export_crud_load_multiple('cer', $data);
+
+  foreach ($presets as $preset) {
+    $export['features']['cer'][$preset->id] = $preset->id;
+    
+    foreach ($preset->left as $field) {
+      $pipe = array_merge_recursive($pipe, $field->getExportPipe($export));
+    }
+    foreach ($preset->right as $field) {
+      $pipe = array_merge_recursive($pipe, $field->getExportPipe($export));
+    }
+  }
+
+  return $pipe;
+}
+
+/**
+ * CTools Export API functions
+ */
+ 
+/**
+ * load all callback
+ */
+function cer_preset_load_all($reset = FALSE) {
+  if ($reset) {
+    drupal_static_reset(__FUNCTION__);
+  }
+  $presets = &drupal_static(__FUNCTION__);
+
+  if (! isset($presets)) {
+    $presets = ctools_export_load_object('cer', 'all');
+    uasort($presets, '_cer_sort_presets');
+  }
+
+  return $presets;
+}
+
+/**
+ * uasort() callback. @see cer_preset_load_all().
+ */
+function _cer_sort_presets(CerPreset $a, CerPreset $b) {
+  if ($a->weight > $b->weight) {
+    return 1;
+  }
+  elseif ($a->weight < $b->weight) {
+    return -1;
+  }
+  else {
+    return 0;
+  }
+}
+
+/**
+ * list callback
+ */
+function cer_preset_list_all() {
+  $list = array();
+
+  $presets = ctools_export_crud_load_all('cer');
+  foreach ($presets as $preset) {
+    $list[ $preset->id ] = sprintf('%s <> %s', html_entity_decode($preset->left->getLabel()), html_entity_decode($preset->right->getLabel()));
+  }
+
+  return $list;
+}
+
+/**
+ * status callback
+ */
+function cer_preset_set_status(CerPreset $preset, $status) {
+  // If the preset lives in the database, set its status flag. Otherwise, use
+  // CTools' status tracking mechanism (the default_cer variable).
+  $preset->enabled = $status;
+
+  if ($preset->export_type & EXPORT_IN_DATABASE) {
+    ctools_export_crud_save('cer', $preset);
+  }
+  else {
+    ctools_export_set_status('cer', $preset, $status);
+  }
+
+  // Allow modules to react to the change.
+  module_invoke_all('cer_preset_toggle', $preset);
+}
+
+/**
+ * Export callback for {cer}.a and {cer}.b
+ */
+function _cer_export_chain(CerPreset $preset, $field, CerFieldChain $value, $indent) {
+  return "'{$value}'";
+}
+
+/**
+ * Implements hook_entity_property_info().
+ */
+function cer_entity_property_info() {
+  $properties = array();
+
+  foreach (entity_get_info() as $entity_type => $entity_info) {
+    // Expose a 'cer' struct on every entity type so that we can get special
+    // entity-specific information during processing. This stuff is wrapped in
+    // a struct to avoid namespace collisions, which can be disastrous.
+    //
+    // @see Issue #2223467
+    //
+    $properties[$entity_type]['properties']['cer'] = array(
+      'label' => t('CER'),
+      'description' => t('Information about the entity, used internally by CER.'),
+      'type' => 'struct',
+      'getter callback' => 'cer_get_cer_struct',
+      'computed' => TRUE,
+      'property info' => array(
+        // lineage is a chain string, in the format used by {cer}.a and {cer}.b.
+        // e.g., node:article:field_related_pages.
+        'lineage' => array(
+          'label' => t('Context'),
+          'description' => t("The entity's lineage, represented as a string."),
+          'type' => 'text',
+          'getter callback' => 'cer_get_entity_lineage',
+          'computed' => TRUE,
+        ),
+        // The depth of the entity. The default callback will just return 1, since most
+        // entities don't live inside other entities (field collections are the main
+        // exception).
+        'depth' => array(
+          'label' => t('Depth'),
+          'description' => t("How deeply the entity is embedded."),
+          'type' => 'integer',
+          'getter callback' => 'cer_get_entity_depth',
+          'computed' => TRUE,
+        ),
+        // The default callback returns the original entity because, as with the depth
+        // property, most entities don't live inside other entities.
+        'owner' => array(
+          'label' => t('Owner'),
+          'description' => t('The top-level entity under which this one is embedded.'),
+          'type' => 'entity',
+          'getter callback' => 'cer_get_entity_owner',
+          'computed' => TRUE,
+        ),
+        // A wrapper around $entity->original that returns the current entity if there is
+        // no original version available (i.e., during bulk update).
+        'original' => array(
+          'label' => t('Original'),
+          'description' => t('The original entity (before update), or the current entity if an update has not occurred.'),
+          'type' => 'entity',
+          'getter callback' => 'cer_get_entity_original',
+          'computed' => TRUE,
+        ),
+      ),
+    );
+  }
+
+  return $properties;
+}
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function cer_entity_property_info_alter(array &$info) {
+  // Field collections are special. Because they live inside other entities (to
+  // potentially infinite levels of recursion), their CER property callbacks must be 
+  // able to recurse upwards through the chain of embedding.
+  if (module_exists('field_collection')) {
+    $struct = &$info['field_collection_item']['properties']['cer']['property info'];
+
+    $struct['lineage']['getter callback'] = 'cer_get_field_collection_lineage';
+    $struct['lineage']['raw getter callback'] = 'cer_get_field_collection_lineage_array';
+    $struct['depth']['getter callback'] = 'cer_get_field_collection_depth';
+    $struct['owner']['getter callback'] = 'cer_get_field_collection_owner';
+  }
+}
+
+// Include property callback functions
+module_load_include('inc', 'cer', 'cer.properties');
+
+// Load CER's implementation of the Hierarchical Select API if Hierarchical Select
+// is installed. It's a bit ugleh to include it globally like this, but as soon
+// as Hierarchical Select implements hook_hook_info(), I'll get rid of it.
+if (module_exists('hierarchical_select')) {
+  module_load_include('inc', 'cer', 'cer.hierarchical_select');
+}
